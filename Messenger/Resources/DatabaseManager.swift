@@ -25,7 +25,7 @@ extension DatabaseManager {
         safeEmail = safeEmail.replacingOccurrences(of: "@", with: "-")
         
         database.child(safeEmail).observeSingleEvent(of: .value, with: { snapshot in
-            guard snapshot.value as? String != nil else {
+            guard snapshot.value as? NSDictionary != nil else {
                 completion(false)
                 return
             }

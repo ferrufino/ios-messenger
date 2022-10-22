@@ -7,8 +7,11 @@
 
 import UIKit
 import FirebaseAuth
+import JGProgressHUD
 
 class RegisterViewController: UIViewController {
+    
+    private let spinner = JGProgressHUD(style: .dark)
     
     private let imageView: UIImageView = {
         let imageView = UIImageView()
@@ -198,31 +201,59 @@ class RegisterViewController: UIViewController {
               !email.isEmpty,
               !password.isEmpty,
               password.count > 5 else {
-            alertUserLoginError()
+            alertUserLoginError(nil)
             return
         }
         
-        // Firebase Register
-        FirebaseAuth.Auth.auth().createUser(withEmail: email, password: password, completion: {[weak self] authResults, error in
-            guard let strongSelf = self else{
-                return
-            }
-            guard authResults != nil, error == nil else {
-                print("Error creating user")
+        spinner.show(in: view)
+        
+        DatabaseManager.shared.userExists(with: email, completion: { [weak self] exists in
+            guard let strongSelf = self else {
                 return
             }
             
-            DatabaseManager.shared.insertUser(with: ChatAppUser(firstName: firstName,
-                                                                lastName: lastName,
-                                                                email: email))
+            DispatchQueue.main.async {
+                strongSelf.spinner.dismiss()
+            }
             
-            strongSelf.navigationController?.dismiss(animated: true)
-       
+            guard !exists else{
+                // user already exists
+                strongSelf.alertUserLoginError("Looks like a user already registered with that email.")
+                return
+            }
+            
+            // Firebase Register
+            FirebaseAuth.Auth.auth().createUser(withEmail: email, password: password, completion: {[weak self] authResults, error in
+                guard let strongSelf = self else{
+                    return
+                }
+                guard authResults != nil, error == nil else {
+                    print("Error creating user")
+                    return
+                }
+                
+                DatabaseManager.shared.insertUser(with: ChatAppUser(firstName: firstName,
+                                                                    lastName: lastName,
+                                                                    email: email))
+                
+                strongSelf.navigationController?.dismiss(animated: true)
+                
+            })
+            
+            
         })
+        
     }
     
-    func alertUserLoginError() {
-        let alert = UIAlertController(title: "Woops", message: "Please enter all information to create a new account.", preferredStyle: .alert)
+    func alertUserLoginError(_ message: String?) {
+        var alert = UIAlertController()
+        if message != nil {
+            alert = UIAlertController(title: "Woops", message: message, preferredStyle: .alert)
+            
+        } else {
+            alert = UIAlertController(title: "Woops", message: "Please enter all information to create a new account.", preferredStyle: .alert)
+            
+        }
         
         alert.addAction(UIAlertAction(title: "Dismiss",
                                       style: .cancel,

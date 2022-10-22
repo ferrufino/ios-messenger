@@ -8,8 +8,11 @@
 import UIKit
 import FirebaseAuth
 import GoogleSignIn
+import JGProgressHUD
 
 class LoginViewController: UIViewController {
+    
+    private let spinner = JGProgressHUD(style: .dark)
     
     private let imageView: UIImageView = {
         let imageView = UIImageView()
@@ -155,29 +158,28 @@ class LoginViewController: UIViewController {
             alertUserLoginError()
             return
         }
+        
+        spinner.show(in: view)
+        
         // Firebase login
-        DatabaseManager.shared.userExists(with: email, completion: { [weak self] exists in
+        FirebaseAuth.Auth.auth().signIn(withEmail: email, password: password, completion: { [weak self] authResult, error in
             
             guard let strongSelf = self else {
                 return
             }
-            guard !exists else {
-                // user already exists
-                self?.alertUserLoginError("Looks like a user account for that email address already exists!")
+            
+            guard let result = authResult, error == nil else {
+                print("Failed to log in user with email: \(email)")
                 return
             }
             
-            FirebaseAuth.Auth.auth().signIn(withEmail: email, password: password, completion: { authResult, error in
-                
-                guard let result = authResult, error == nil else {
-                    print("Failed to log in user with email: \(email)")
-                    return
-                }
-                
-                let user = result.user
-                print("Logged in User:\(user)")
-                strongSelf.navigationController?.dismiss(animated: true)
-            })
+            DispatchQueue.main.async {
+                strongSelf.spinner.dismiss()
+            }
+            
+            let user = result.user
+            print("Logged in User:\(user)")
+            strongSelf.navigationController?.dismiss(animated: true)
         })
     }
     
